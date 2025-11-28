@@ -179,22 +179,64 @@ def Update_Cast_Payment_Status(cast_id, is_paid):
     Save_Cast_Payment_Status(status_data)
 
 @st.cache_resource(show_spinner="Đang kết nối dữ liệu...")
+import streamlit as st # Đảm bảo đã import st
+import os.path
+import json # Cần thiết để xử lý chuỗi JSON từ secrets
+# ... (các imports khác)
+
+@st.cache_resource(show_spinner="Đang kết nối dữ liệu...")
 def Init_Connection():
     """Thiết lập kết nối với Google API (Sheets, Drive, Calendar) và thêm sheets mới"""
+    
     creds = None
     if os.path.exists(TOKEN_FILE):
         creds = Credentials.from_authorized_user_file(TOKEN_FILE, SCOPES)
-    # ... (Authentication logic)
+    
+    # Biến theo dõi file secrets đang dùng
+    client_secrets_file_path = CREDENTIALS_FILE
+    is_temp_file = False
+    
     if not creds or not creds.valid:
-        if creds and creds.expired and creds.refresh_token: creds.refresh(Request())
+        
+        # --- BƯỚC MỚI: KIỂM TRA STREAMLIT SECRETS ---
+        if 'google_auth' in st.secrets and 'credentials_json' in st.secrets.google_auth:
+            
+            # Đang chạy trên Cloud, sử dụng secrets và tạo file tạm
+            client_secrets_file_path = "temp_credentials_oauth.json"
+            is_temp_file = True
+            
+            try:
+                # Ghi nội dung JSON từ secret vào file tạm
+                credentials_data = st.secrets.google_auth['credentials_json']
+                with open(client_secrets_file_path, "w", encoding="utf-8") as f:
+                    f.write(credentials_data.strip())
+            except Exception as e:
+                st.error(f"Lỗi tạo file credentials tạm thời từ Secrets: {e}")
+                return None, None, None, None, None, None
+        
+        # --- LOGIC XÁC THỰC CŨ (SỬ DỤNG FILE PATH ĐÃ XÁC ĐỊNH) ---
+        if creds and creds.expired and creds.refresh_token:
+            creds.refresh(Request())
         else:
             try:
-                flow = InstalledAppFlow.from_client_secrets_file(CREDENTIALS_FILE, SCOPES)
+                # Sử dụng client_secrets_file_path (có thể là CREDENTIALS_FILE hoặc file tạm)
+                flow = InstalledAppFlow.from_client_secrets_file(client_secrets_file_path, SCOPES)
                 creds = flow.run_local_server(port=0)
             except Exception as e:
-                st.error(f"Lỗi khởi tạo OAuth: Vui lòng kiểm tra file {CREDENTIALS_FILE}. Lỗi: {e}")
+                # Dọn dẹp file tạm nếu quá trình xác thực thất bại
+                if is_temp_file and os.path.exists(client_secrets_file_path):
+                    os.remove(client_secrets_file_path)
+                
+                st.error(f"Lỗi khởi tạo OAuth: Vui lòng kiểm tra file {CREDENTIALS_FILE} hoặc Secrets. Lỗi: {e}")
                 return None, None, None, None, None, None
+        
+        # Dọn dẹp file tạm sau khi đã xác thực thành công
+        if is_temp_file and os.path.exists(client_secrets_file_path):
+             os.remove(client_secrets_file_path)
+
         with open(TOKEN_FILE, 'w') as token: token.write(creds.to_json())
+    
+    # --- PHẦN KẾT NỐI API GOOGLE (GIỮ NGUYÊN) ---
     try:
         cal_service = build('calendar', 'v3', credentials=creds) 
         gc = gspread.authorize(creds)
