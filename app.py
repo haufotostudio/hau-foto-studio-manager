@@ -15,6 +15,13 @@ from reportlab.lib.units import cm
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont, TTFError # Import TTFError
 
+# --- GOOGLE AUTH IMPORTS ---
+from google.auth.transport.requests import Request
+from google.oauth2.credentials import Credentials
+from google_auth_oauthlib.flow import InstalledAppFlow
+from googleapiclient.discovery import build
+import gspread
+
 # --- CẤU HÌNH HỆ THỐNG ---
 SCOPES = [
     'https://www.googleapis.com/auth/calendar',
@@ -43,13 +50,6 @@ CONTRACT_COLS = [
     'Chi phí cost', 'Số tiền còn lại', 'Trạng thái', 'Người liên hệ', 
     'Ghi chú', 'Sản phẩm bao gồm', 'Link sản phẩm'
 ]
-
-# --- GOOGLE AUTH IMPORTS ---
-from google.auth.transport.requests import Request
-from google.oauth2.credentials import Credentials
-from google_auth_oauthlib.flow import InstalledAppFlow
-from googleapiclient.discovery import build
-import gspread
 
 # --- HELPER FUNCTIONS (GLOBAL SCOPE) ---
 
@@ -117,8 +117,8 @@ def Load_Tab_Order():
     if os.path.exists(SETTINGS_FILE):
         try:
             with open(SETTINGS_FILE, "r", encoding="utf-8") as f:
-                 settings = json.load(f)
-                 if isinstance(settings, dict): 
+                settings = json.load(f)
+                if isinstance(settings, dict): 
                     loaded_order = settings.get('tab_order', [])
                     final_order = [key for key in loaded_order if key in default_order]
                     if not set(default_order).issubset(set(final_order)):
@@ -141,9 +141,9 @@ def Save_Tab_Order(order_list):
     if os.path.exists(SETTINGS_FILE):
         try:
             with open(SETTINGS_FILE, "r", encoding="utf-8") as f:
-                 loaded_settings = json.load(f)
-                 if isinstance(loaded_settings, dict):
-                     settings = loaded_settings
+                loaded_settings = json.load(f)
+                if isinstance(loaded_settings, dict):
+                    settings = loaded_settings
         except: pass
         
     settings['tab_order'] = order_list 
@@ -177,12 +177,6 @@ def Update_Cast_Payment_Status(cast_id, is_paid):
     status_data = Load_Cast_Payment_Status()
     status_data[cast_id] = is_paid
     Save_Cast_Payment_Status(status_data)
-
-@st.cache_resource(show_spinner="Đang kết nối dữ liệu...")
-import streamlit as st # Đảm bảo đã import st
-import os.path
-import json # Cần thiết để xử lý chuỗi JSON từ secrets
-# ... (các imports khác)
 
 @st.cache_resource(show_spinner="Đang kết nối dữ liệu...")
 def Init_Connection():
@@ -388,9 +382,9 @@ def Load_Booking_Data_From_Sheet(worksheet):
             
             # Cột trùng lặp (ví dụ: 'Thời gian_1', 'Thời gian_2')
             if counts[clean_h] > 1:
-                 final_cols.append(f"{clean_h}_{counts[clean_h]}")
+                final_cols.append(f"{clean_h}_{counts[clean_h]}")
             else:
-                 final_cols.append(clean_h)
+                final_cols.append(clean_h)
 
         if len(rd) > 1:
             df = pd.DataFrame(rd[1:], columns=final_cols)
@@ -446,11 +440,11 @@ def Search_Survey_Data_V2(df_survey, phone_lookup, booking_type):
     
     # 3. Làm sạch dữ liệu SĐT trong các cột tiềm năng của DataFrame
     for col in phone_cols: 
-         # Bước 1: Chuyển sang string và loại bỏ dấu nháy đơn (') ở đầu (Nếu có)
-         clean_col = df_temp[col].astype(str).str.lstrip("'")
-         # Bước 2: Loại bỏ tất cả các ký tự không phải chữ số
-         df_temp[col] = clean_col.apply(lambda x: re.sub(r'\D', '', x))
-         
+        # Bước 1: Chuyển sang string và loại bỏ dấu nháy đơn (') ở đầu (Nếu có)
+        clean_col = df_temp[col].astype(str).str.lstrip("'")
+        # Bước 2: Loại bỏ tất cả các ký tự không phải chữ số
+        df_temp[col] = clean_col.apply(lambda x: re.sub(r'\D', '', x))
+        
     # 4. Tạo mask tìm kiếm: So sánh SĐT đã làm sạch với SĐT lookup đã làm sạch
     # Sử dụng `==` (so sánh bằng) để tìm kiếm SĐT đã được làm sạch hoàn toàn
     mask = df_temp[phone_cols].apply(lambda x: x == clean_number_lookup).any(axis=1)
@@ -525,13 +519,13 @@ def Search_Survey_Data_V2(df_survey, phone_lookup, booking_type):
             try: data['ngay_gio'] = datetime.datetime.strptime(f"{date_str}", "%Y-%m-%d").replace(hour=8, minute=0)
             except: data['ngay_gio'] = datetime.datetime.now()
     elif timestamp_str:
-         try: 
+        try: 
             # Giả định format Timestamp Google Form mặc định: MM/DD/YYYY HH:MM:SS
             # Hoặc DD/MM/YYYY HH:MM:SS (Tùy theo cài đặt Sheet)
             data['ngay_gio'] = datetime.datetime.strptime(timestamp_str.split()[0], '%d/%m/%Y')
-         except:
-             try: data['ngay_gio'] = datetime.datetime.strptime(timestamp_str.split()[0], '%m/%d/%Y')
-             except: data['ngay_gio'] = datetime.datetime.now()
+        except:
+            try: data['ngay_gio'] = datetime.datetime.strptime(timestamp_str.split()[0], '%m/%d/%Y')
+            except: data['ngay_gio'] = datetime.datetime.now()
     else:
         # Nếu không tìm thấy ngày nào, sẽ trả về ngày hiện tại, nhưng chúng ta sẽ
         # bỏ qua nó trong logic gán mặc định của form để ngày luôn là today() khi form được reset
@@ -593,9 +587,9 @@ def Update_Client_Row(df, ws_client_db, contract_id, name, phone, facebook, addr
     
     # Kiểm tra cột có tồn tại trong df không
     if 'Họ tên khách hàng' not in df.columns or 'Số điện thoại' not in df.columns or 'Dịch vụ đã chọn' not in df.columns:
-         print("Lỗi: Cấu trúc sheet 'Danh Sach Khach Hang' không đúng.")
-         return
-         
+        print("Lỗi: Cấu trúc sheet 'Danh Sach Khach Hang' không đúng.")
+        return
+        
     # Tìm kiếm chính xác (Nếu có thể: tên và SĐT trùng khớp, hoặc chỉ SĐT khớp)
     match_row = df[(df['Họ tên khách hàng'] == name) & (df['Số điện thoại'] == phone)]
     
@@ -611,7 +605,7 @@ def Update_Client_Row(df, ws_client_db, contract_id, name, phone, facebook, addr
             # idx + 2: +1 cho header, +1 cho index (vì df là 0-index)
             ws_client_db.update_cell(idx + 2, col_index, new_services) 
         elif not current_services:
-             ws_client_db.update_cell(idx + 2, col_index, contract_id)
+            ws_client_db.update_cell(idx + 2, col_index, contract_id)
         
     else:
         # Khách hàng mới: Thêm dòng mới
@@ -719,10 +713,10 @@ def Create_Pro_Pdf(data):
     y_sch = y
     
     if isinstance(data['lich_trinh'], list):
-         lt = "\n".join([f"- Ngày: {s['date']} | Giờ Checkin: {s['time_in']} | Giờ Checkout: {s['time_out']} | Nội dung: {s['content']}" for s in data['lich_trinh']])
+        lt = "\n".join([f"- Ngày: {s['date']} | Giờ Checkin: {s['time_in']} | Giờ Checkout: {s['time_out']} | Nội dung: {s['content']}" for s in data['lich_trinh']])
     else:
-         lt = data['lich_trinh'] # Nếu là string
-         
+        lt = data['lich_trinh'] # Nếu là string
+        
     for line in lt.split('\n'):
         if y_sch < 4*cm: # Kiểm tra tràn trang
             c.showPage()
@@ -848,8 +842,8 @@ def Init_Form_State(booking_type):
             
             # Dynamic lists
             'products': [
-                 {'so_luong': 1, 'san_pham': '', 'size': '', 'chi_phi_cost': 0},
-                 {'so_luong': 1, 'san_pham': '', 'size': '', 'chi_phi_cost': 0}
+                {'so_luong': 1, 'san_pham': '', 'size': '', 'chi_phi_cost': 0},
+                {'so_luong': 1, 'san_pham': '', 'size': '', 'chi_phi_cost': 0}
             ],
             'ekip': [],
         }
@@ -950,9 +944,9 @@ def Render_Ekip_Block(current_state, booking_type):
         if sel_staff_val != "--":
             # Kiểm tra trùng lặp
             if any(e['name'] == sel_staff_val and e['role'] == role_staff_val for e in staff_list):
-                 st.warning(f"Nhân viên {sel_staff_val} đã được thêm với vai trò {role_staff_val}.")
+                st.warning(f"Nhân viên {sel_staff_val} đã được thêm với vai trò {role_staff_val}.")
             else:
-                 staff_list.append({"name": sel_staff_val, "role": role_staff_val, "cast": cast_staff_val, "note": ghi_chu_ekip_val}); st.rerun()
+                staff_list.append({"name": sel_staff_val, "role": role_staff_val, "cast": cast_staff_val, "note": ghi_chu_ekip_val}); st.rerun()
 
     # Nút xóa hết Ekip (Đã chuyển ra ngoài st.form)
     if col_clear.button("🗑️ Xóa hết Ekip", key=f"clear_ekip_{booking_type}_btn_out"):
@@ -1044,12 +1038,12 @@ def Render_Expense_Block(current_state, booking_type):
     is_reset_needed = False
     if not noi_dung_phat_sinh_checkbox:
         if chi_phi_phat_sinh != 0 or noi_dung_phat_sinh_text != "":
-             current_state['inp_chi_phi_phat_sinh'] = 0
-             current_state['inp_noi_dung_phat_sinh_text'] = ""
-             is_reset_needed = True
+            current_state['inp_chi_phi_phat_sinh'] = 0
+            current_state['inp_noi_dung_phat_sinh_text'] = ""
+            is_reset_needed = True
         
     if is_reset_needed:
-         st.rerun()
+        st.rerun()
 
     return current_state['inp_chi_phi_phat_sinh']
 
@@ -1062,11 +1056,11 @@ def Render_Booking_Form(worksheet_name, booking_type, ws_contract, ws_client_db,
 
     # Load data sheet tương ứng
     if booking_type == 'wedding':
-         ws_data = st.session_state.get('ws_wedding')
-         search_key = "SĐT CĐ/CR"
+        ws_data = st.session_state.get('ws_wedding')
+        search_key = "SĐT CĐ/CR"
     else:
-         ws_data = st.session_state.get('ws_personal')
-         search_key = "SĐT Khách"
+        ws_data = st.session_state.get('ws_personal')
+        search_key = "SĐT Khách"
 
     if ws_data is None:
         st.warning(f"Sheet **'{worksheet_name}'** không tồn tại. Vui lòng tạo sheet này để sử dụng tính năng tự điền.")
@@ -1074,9 +1068,9 @@ def Render_Booking_Form(worksheet_name, booking_type, ws_contract, ws_client_db,
     # --- TỐI ƯU: Chỉ load data nếu cần thiết (Khi form đang trống hoặc có yêu cầu lookup) ---
     df_data = pd.DataFrame()
     if ws_data and (current_state['is_new'] or current_state['phone_lookup']):
-         # Chỉ load 1000 dòng gần nhất để tăng tốc độ nếu data quá lớn
-         # Tuy nhiên, do gspread không có get_all_records_limit, giữ nguyên get_all_values()
-         df_data, _ = Load_Booking_Data_From_Sheet(ws_data) 
+        # Chỉ load 1000 dòng gần nhất để tăng tốc độ nếu data quá lớn
+        # Tuy nhiên, do gspread không có get_all_records_limit, giữ nguyên get_all_values()
+        df_data, _ = Load_Booking_Data_From_Sheet(ws_data) 
 
 
     # --- 2. TỰ ĐIỀN THÔNG MINH ---
@@ -1125,9 +1119,9 @@ def Render_Booking_Form(worksheet_name, booking_type, ws_contract, ws_client_db,
     
     default_datetime = datetime.datetime.now()
     if isinstance(form_data.get('ngay_gio'), datetime.datetime):
-         default_time_in = form_data['ngay_gio'].time().replace(second=0, microsecond=0)
+        default_time_in = form_data['ngay_gio'].time().replace(second=0, microsecond=0)
     else:
-         default_time_in = default_datetime.time().replace(minute=0, second=0, microsecond=0)
+        default_time_in = default_datetime.time().replace(minute=0, second=0, microsecond=0)
 
     default_date_end = default_datetime.date()
     default_time_out = (default_datetime + datetime.timedelta(hours=4)).time().replace(second=0, microsecond=0)
@@ -1291,18 +1285,20 @@ def Render_Booking_Form(worksheet_name, booking_type, ws_contract, ws_client_db,
             end_dt = datetime.datetime.combine(ngay_ket_thuc, gio_checkout)
             
             if start_dt >= end_dt:
-                 st.error("Ngày/Giờ Bắt đầu phải trước Ngày/Giờ Kết thúc.")
-                 st.stop()
+                st.error("Ngày/Giờ Bắt đầu phải trước Ngày/Giờ Kết thúc.")
+                st.stop()
 
             if not khach_hang or not sdt or not goi_chup:
                 st.error("Vui lòng điền đủ Tên Khách hàng, SĐT và Gói chụp.")
+                
             
             # Đảm bảo trạng thái không phải là "Chưa cọc" nếu muốn tạo lịch Google
             # Tuy nhiên, theo yêu cầu mới là "Trạng thái chưa cọc vẫn có thể lên lịch được",
             # nên chỉ cần đảm bảo có trạng thái Hợp đồng được chọn, ví dụ:
             if not trang_thai:
-                 st.error("Vui lòng chọn Trạng thái hợp đồng.")
-                 st.stop()
+                st.error("Vui lòng chọn Trạng thái hợp đồng.")
+                st.stop()
+                
             
             # --- A. CHUẨN BỊ DỮ LIỆU ---
             full_sdt_clean = re.sub(r'[^\d&]', '', sdt)
@@ -1555,11 +1551,11 @@ def Render_Contract_List(ws_contract):
     df_display_final = df_filtered.copy()
     
     for col in money_cols:
-         if col in df_display_final.columns:
-              df_display_final[col] = df_display_final[col].apply(Fmt_Money_Str) # Format tiền tệ
+        if col in df_display_final.columns:
+            df_display_final[col] = df_display_final[col].apply(Fmt_Money_Str) # Format tiền tệ
 
     if 'Lợi nhuận' in df_display_final.columns:
-         df_display_final['Lợi nhuận'] = df_display_final['Lợi nhuận'].apply(Fmt_Money_Str) # Format Lợi nhuận
+        df_display_final['Lợi nhuận'] = df_display_final['Lợi nhuận'].apply(Fmt_Money_Str) # Format Lợi nhuận
 
     # Lọc các cột cần thiết cho hiển thị tổng quan
     display_cols = ['Mã hợp đồng', 'Ngày Ký HĐ', 'Khách hàng', 'Số điện thoại', 'Gói chụp', 'NgàyGiờ', 'Trạng thái', 'Giá trị hợp đồng', 'Số tiền còn lại']
@@ -1595,8 +1591,8 @@ def Get_Calendar_Events(_cal_service):
     time_max = (datetime.datetime.utcnow() + datetime.timedelta(days=90)).isoformat() + 'Z'
     
     events_result = _cal_service.events().list(calendarId='primary', timeMin=now,
-                                            timeMax=time_max, maxResults=20, singleEvents=True,
-                                            orderBy='startTime').execute()
+                                         timeMax=time_max, maxResults=20, singleEvents=True,
+                                         orderBy='startTime').execute()
     return events_result.get('items', [])
 
 def Render_Calendar(cal_service):
@@ -1735,8 +1731,8 @@ def Render_Salary(ws_contract):
     st.write("##### 💰 Tổng hợp Cast Ekip theo tháng (Chi tiết Nhân sự)")
     
     if ws_contract is None:
-         st.warning("Không thể truy cập sheet 'Hop Dong' để tính toán Cast.")
-         return
+        st.warning("Không thể truy cập sheet 'Hop Dong' để tính toán Cast.")
+        return
 
     # Tải dữ liệu hợp đồng (sử dụng cache)
     df_contract = st.session_state.get('df_contract')
@@ -1890,11 +1886,7 @@ def Render_Salary(ws_contract):
                     submit_pay = st.form_submit_button("✅ Xác nhận Đã Thanh toán Cast", type="primary")
 
                     if submit_pay and selected_unpaid != "-- Chọn Cast Job --":
-                        # Trích xuất Cast ID từ chuỗi hiển thị
-                        selected_cast_id_raw = selected_unpaid.split('(')[1].split(')')[0]
-                        selected_nv_name = selected_unpaid.split('(')[0].strip()
-                        # Tìm Cast ID gốc trong list unpaid_cast_ids (có thể hơi phức tạp do chuỗi hiển thị)
-                        
+                        # Trích xuất Mã HĐ từ chuỗi hiển thị
                         # Cách đơn giản: Lặp qua df_cast_detail để tìm Cast ID khớp
                         found_row = df_cast_detail[df_cast_detail.apply(lambda row: f"{row['Tên NV']} ({row['Mã HĐ']})" in selected_unpaid, axis=1)]
                         
@@ -1905,12 +1897,12 @@ def Render_Salary(ws_contract):
                             Clear_Data_Cache() # Clear cache để tải lại trạng thái
                             st.rerun()
                         else:
-                             st.error("Lỗi: Không tìm thấy Cast ID hợp lệ để cập nhật.")
-                             
+                            st.error("Lỗi: Không tìm thấy Cast ID hợp lệ để cập nhật.")
+                            
                 else:
                     st.info("Không có Cast Job nào chưa thanh toán để đánh dấu.")
                     st.form_submit_button("✅ Xác nhận Đã Thanh toán Cast", disabled=True)
-            
+                
             # Hiển thị bảng chi tiết (đã lọc)
             st.dataframe(
                 df_cast_detail[['Ngày Chụp', 'Mã HĐ', 'Tên NV', 'Vai trò', 'Cast (VNĐ)', 'Trạng thái Thanh toán']].sort_values(by='Ngày Chụp', ascending=False),
@@ -1928,8 +1920,8 @@ def Render_Salary(ws_contract):
     
     # Format cột tiền tệ trong chi tiết
     if 'Cast Nhân Viên' in df_detail.columns:
-         df_detail['Cast Nhân Viên'] = df_detail['Cast Nhân Viên'].apply(Fmt_Money_Str)
-         
+        df_detail['Cast Nhân Viên'] = df_detail['Cast Nhân Viên'].apply(Fmt_Money_Str)
+        
     # Đổi tên cột hiển thị
     df_detail.columns = ['Mã HĐ', 'Ngày Chụp', 'Khách Hàng', 'Ekip Ghi Chú (Chi tiết NV)', 'Tổng Cast Ekip', 'Trạng Thái']
     
@@ -1946,8 +1938,8 @@ def Render_PNL_Analysis(ws_contract):
     st.write("##### 📊 Phân tích hiệu suất tài chính chi tiết theo từng Gói Dịch vụ.")
 
     if ws_contract is None:
-         st.warning("Không thể truy cập sheet 'Hop Dong' để tính toán P&L.")
-         return
+        st.warning("Không thể truy cập sheet 'Hop Dong' để tính toán P&L.")
+        return
 
     # Tải dữ liệu hợp đồng (sử dụng cache)
     df_contract = st.session_state.get('df_contract')
@@ -2062,9 +2054,9 @@ def Render_Admin_Data(ws_contract):
     st.warning("⚠️ **CHỨC NĂNG NÀY CHỈ DÀNH CHO QUẢN LÝ.** Mọi thay đổi sẽ được ghi trực tiếp vào Google Sheet 'Hop Dong'.")
 
     if st.session_state.get('role') != 'admin':
-         st.error("Bạn không có quyền truy cập chức năng này.")
-         return
-         
+        st.error("Bạn không có quyền truy cập chức năng này.")
+        return
+        
     if ws_contract is None:
         st.error("Không thể kết nối đến sheet 'Hop Dong' để chỉnh sửa.")
         return
@@ -2098,7 +2090,7 @@ def Render_Admin_Data(ws_contract):
     valid_money_cols = [col for col in money_cols if col in df_for_edit.columns]
     
     for col in valid_money_cols:
-         df_for_edit[col] = pd.to_numeric(df_for_edit[col].replace('', '0'), errors='coerce').fillna(0).astype('Int64') # Int64 để cho phép NaN
+        df_for_edit[col] = pd.to_numeric(df_for_edit[col].replace('', '0'), errors='coerce').fillna(0).astype('Int64') # Int64 để cho phép NaN
 
     # Cấu hình widget edit
     column_config = {
@@ -2179,6 +2171,7 @@ def main():
         # Đảm bảo kết nối trả về đủ 6 giá trị
         if result is None or len(result) < 6 or result[0] is None: 
             st.error("Lỗi kết nối Google!"); 
+            # Đảm bảo TOKEN_FILE được xóa khi lỗi để buộc tạo lại Auth
             if st.button("🔧 Xóa Cache & Reconnect"): Clear_Data_Cache(); os.remove(TOKEN_FILE) if os.path.exists(TOKEN_FILE) else None; st.rerun()
             return
             
@@ -2206,8 +2199,8 @@ def main():
             st.info("Vui lòng chọn loại dịch vụ bạn quan tâm để điền thông tin khảo sát booking.")
 
             c1, c2 = st.columns(2)
-            if c1.button("👤 Booking Cá Nhân / Gia Đình", type="primary", use_container_width=True): st.session_state.booking_type = 'personal'
-            if c2.button("👰🤵 Booking Weddings / Cặp Đôi", type="primary", use_container_width=True): st.session_state.booking_type = 'wedding'
+            if c1.button("👤 Booking Cá Nhân / Gia Đình", use_container_width=True, type="primary", key="public_booking_personal"): st.session_state.booking_type = 'personal'
+            if c2.button("👰🤵 Booking Weddings / Cặp Đôi", use_container_width=True, type="primary", key="public_booking_wedding"): st.session_state.booking_type = 'wedding'
 
             st.markdown("---")
             
@@ -2550,5 +2543,4 @@ def main():
 
 
 if __name__ == '__main__':
-    # Khối try/except ở cuối main đã được dọn dẹp vì logic font đã được chuyển vào hàm Create_Pro_Pdf
     main()
